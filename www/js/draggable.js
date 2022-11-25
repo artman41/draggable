@@ -42,8 +42,6 @@
 
                     posX = normaliseX(x - deltaX);
                     posY = normaliseY(y - deltaY);
-                    console.log("Actual: %O, Normalised: %O", x - deltaX, posX);
-                    console.log("Actual: %O, Normalised: %O", y - deltaY, posY);
                     this.style.position = "absolute";
                     this.style.left = `${window.scrollX + posX}px`;
                     this.style.top = `${window.scrollY + posY}px`;
@@ -62,14 +60,12 @@
             let computedStyleMap = draggable.computedStyleMap();
             let {left: left, top: top, width: width, height: height} = draggable.getBoundingClientRect();
 
-            let spacer = document.createElement("span");
+            let spacer = document.createElement("draggable_spacer");
             spacer.style.left = `${left}px`;
             spacer.style.top = `${top}px`;
             spacer.style.width = `${width}px`;
             spacer.style.height = `${height - 2}px`;
             spacer.style.display = computedStyleMap.get("display").value;
-
-            console.log("Spacer: %O", spacer);
 
             draggableArea.appendChild(spacer);
             draggable.before(spacer);
@@ -91,10 +87,8 @@
             let f = (event_) => {
                 let xDiff = diffNums(event_.detail.x, curr[0]);
                 let yDiff = diffNums(event_.detail.y, curr[1]);
-                console.log("xDiff: %O, yDiff: %O", xDiff, yDiff);
                 if(xDiff < 20 && yDiff < 20) 
                     return;
-                console.log("Removing spacer %O", event); 
                 draggableArea.removeChild(spacer);
                 draggable.removeEventListener("draggableMove", f);
             };
@@ -142,7 +136,19 @@
             o.addEventListener("pointerleave", onPointerLeave, {capture: true});
         });
 
-        Array.from(draggableElems).map(o => o.parentElement).filter((o, _i, arr) => o !== null && !arr.includes(o)).forEach(area => {
+        const areas = Array.from(draggableElems).map(o => o.parentElement).filter((o, i, arr) => {
+            if(i === 0)
+                this[arr] = []; 
+            let ret = false;
+            if(o !== null && !this[arr].includes(o)){
+                this[arr].push(o); 
+                ret = true; 
+            };
+            if(i === arr.length-1)
+                delete this[arr];
+            return ret;
+        });
+        areas.forEach(area => {
             area.addEventListener("pointermove", onPointerMove, {capture: true});
             area.addEventListener("pointerleave", onPointerLeave, {capture: true});
         });
