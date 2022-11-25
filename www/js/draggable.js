@@ -58,13 +58,48 @@
 
         function onPointerDown(event) {
             const draggable = toDraggable(event.target);
-            let {left: left, top: top} = draggable.getBoundingClientRect();
+            const draggableArea = draggable.parentElement;
+            let computedStyleMap = draggable.computedStyleMap();
+            let {left: left, top: top, width: width, height: height} = draggable.getBoundingClientRect();
+
+            let spacer = document.createElement("span");
+            spacer.style.left = `${left}px`;
+            spacer.style.top = `${top}px`;
+            spacer.style.width = `${width}px`;
+            spacer.style.height = `${height - 2}px`;
+            spacer.style.display = computedStyleMap.get("display").value;
+
+            console.log("Spacer: %O", spacer);
+
+            draggableArea.appendChild(spacer);
+            draggable.before(spacer);
+
+            function diffNums(A, B) {
+                return A > B ? A - B : B - A;
+            }
+
             deltaX = event.clientX - left;
             deltaY = event.clientY - top;
             draggable.setIsDragging(true);
             isDraggingSomething = true;
             dragTarget = this;
-            draggable.parentElement.lastElementChild.after(draggable);
+            draggableArea.lastElementChild.after(draggable);
+            draggable.setPosition(event.clientX, event.clientY);
+
+            let curr = [posX, posY];
+
+            let f = (event_) => {
+                let xDiff = diffNums(event_.detail.x, curr[0]);
+                let yDiff = diffNums(event_.detail.y, curr[1]);
+                console.log("xDiff: %O, yDiff: %O", xDiff, yDiff);
+                if(xDiff < 20 && yDiff < 20) 
+                    return;
+                console.log("Removing spacer %O", event); 
+                draggableArea.removeChild(spacer);
+                draggable.removeEventListener("draggableMove", f);
+            };
+            draggable.addEventListener("draggableMove", f);
+
             this.dispatchEvent(new CustomEvent("draggablePickup", {bubbles: true, detail: {x: posX, y: posY} }));
             console.log("[%O] <%O> Event: %O, %O", event.type, event.target, event, [left, top]);
         }
@@ -81,32 +116,35 @@
             console.log("[%O] <%O> Event: %O", event.type, event.target, event);
         }
         function onPointerMove(event) {
-            const draggable = toDraggable(event.target);
-            if(!draggable.isDragging()){
+            if(!isDraggingSomething || dragTarget === undefined){
                 return;
             }
+            const draggable = dragTarget;
             draggable.setPosition(event.clientX, event.clientY);
             this.dispatchEvent(new CustomEvent("draggableMove", {bubbles: true, detail: {x: posX, y: posY} }));
             console.log("[%O] <%O> Event: %O", event.type, event.target, event);
         }
 
         function onPointerLeave(event) {
-            const draggable = toDraggable(event.target);
-            if(!draggable.isDragging()){
+            if(!isDraggingSomething || dragTarget === undefined){
                 return;
             }
-            draggable.setPosition(event.clientX, event.clientY);
-            this.dispatchEvent(new CustomEvent("draggableMove", {bubbles: true, detail: {x: posX, y: posY} }));
+            const draggable = dragTarget;
             console.log("[%O] <%O> Event: %O", event.type, event.target, event);
         }
 
-        let draggableElems = document.querySelectorAll("[draggable]");
+        let draggableElems = document.querySelectorAll("[draggableArea]>[draggable]");
         draggableElems.forEach(o => {
             o.addEventListener("pointerdown", onPointerDown, {capture: true});
             o.addEventListener("pointerup", onPointerUp, {capture: true});
             o.addEventListener("pointercancel", onPointerCancel, {capture: true});
             o.addEventListener("pointermove", onPointerMove, {capture: true});
             o.addEventListener("pointerleave", onPointerLeave, {capture: true});
+        });
+
+        Array.from(draggableElems).map(o => o.parentElement).filter((o, _i, arr) => o !== null && !arr.includes(o)).forEach(area => {
+            area.addEventListener("pointermove", onPointerMove, {capture: true});
+            area.addEventListener("pointerleave", onPointerLeave, {capture: true});
         });
 
         window.addEventListener("onselectstart", (_event) => !isDraggingSomething);
