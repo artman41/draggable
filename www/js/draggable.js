@@ -13,25 +13,25 @@
                 ["isDragging", function() {return this.getAttribute("draggable-isDragging") === "true"}],
                 ["setPosition", function(x, y) {
                     normaliseX = (n) => {
-                        let computedStyleMap = this.computedStyleMap();
+                        let computedStyleMap = window.getComputedStyle(this);
                         let thisRect = this.getBoundingClientRect();
                         let parentRect = this.parentElement.getBoundingClientRect();
-                        let paddingLeft = computedStyleMap.get("padding-left").value;
-                        let borderWidth = (computedStyleMap.get("border-top-left-radius") ?? computedStyleMap.get("border-bottom-left-radius")).value / 100;
+                        let paddingLeft = computedStyleMap["padding-left"];
+                        let borderWidth = (computedStyleMap["border-top-left-radius"] ?? computedStyleMap["border-bottom-left-radius"]) / 100;
                         if ((n - paddingLeft - borderWidth) < 0)
                             return paddingLeft + borderWidth;
-                        else if((n+ thisRect.width + borderWidth) > parentRect.right)
+                        else if((n+ thisRect.width + borderWidth) > parentRect.right) 
                             return parentRect.right - thisRect.width - borderWidth;
                         else
                             return n;
                     };
                     normaliseY = (n) => {
-                        let computedStyleMap = this.computedStyleMap();
+                        let computedStyleMap = window.getComputedStyle(this);
                         let thisRect = this.getBoundingClientRect();
                         let parentRect = this.parentElement.getBoundingClientRect();
-                        let paddingTop = computedStyleMap.get("padding-top").value;
-                        let paddingBottom = computedStyleMap.get("padding-bottom").value;
-                        let borderWidth = (computedStyleMap.get("border-top-left-radius") ?? computedStyleMap.get("border-top-right-radius")).value / 100;
+                        let paddingTop = computedStyleMap["padding-top"];
+                        let paddingBottom = computedStyleMap["padding-bottom"];
+                        let borderWidth = (computedStyleMap["border-top-left-radius"] ?? computedStyleMap["border-top-right-radius"]) / 100;
                         if ((n - paddingTop - borderWidth) < 0)
                             return paddingTop + borderWidth;
                         else if((n+paddingBottom + borderWidth) > parentRect.bottom)
@@ -57,7 +57,7 @@
         function onPointerDown(event) {
             const draggable = toDraggable(event.target);
             const draggableArea = draggable.parentElement;
-            let computedStyleMap = draggable.computedStyleMap();
+            let computedStyleMap = window.getComputedStyle(draggable);
             let {left: left, top: top, width: width, height: height} = draggable.getBoundingClientRect();
 
             let spacer = document.createElement("draggable_spacer");
@@ -65,7 +65,7 @@
             spacer.style.top = `${top}px`;
             spacer.style.width = `${width}px`;
             spacer.style.height = `${height - 2}px`;
-            spacer.style.display = computedStyleMap.get("display").value;
+            spacer.style.display = computedStyleMap["display"];
 
             draggableArea.appendChild(spacer);
             draggable.before(spacer);
