@@ -10,6 +10,11 @@
             user-select: none; /* Non-prefixed version, currently */
 }
 
-[draggableArea]>[draggable][dragging-isDragging="true"] {
+[draggableArea] [draggable][draggable-isDragging="true"] {
     cursor: grabbing;
+    position: absolute;
+}
+
+[draggableArea] [draggable][snappable-isSnapped="false"] {
+    position: absolute;
 }
