@@ -1,4 +1,6 @@
 (function() {
+    const DEBUG = false;
+
     const currentScript = document.currentScript;
 
     const EVENT_OnDraggablePickup = "draggablePickup";
@@ -12,6 +14,14 @@
     const ATTR_IsSnapped = "snappable-isSnapped";
 
     const ELEM_DraggableSpacer = "DRAGGABLE_SPACER";
+
+    function logTable(params, properties = undefined) {
+        if(!DEBUG)
+            return;
+        let x = params;
+        Object.entries(x).forEach(([key, value]) => x[key] = value.constructor === Object ? value : JSON.parse(JSON.stringify(value)))
+        console.table(x, properties);
+    }
 
     let draggable = (function() {
         function maybeAddCSS() {
@@ -69,7 +79,6 @@
 
                         posX = normaliseX(x - deltaX);
                         posY = normaliseY(y - deltaY);
-                        // this.style.position = "absolute";
                         this.style.left = `${window.scrollX + posX}px`;
                         this.style.top = `${window.scrollY + posY}px`;
                     }],
@@ -137,7 +146,8 @@
                 }, {once: true});
 
                 this.dispatchEvent(new CustomEvent(EVENT_OnDraggablePickup, {bubbles: true, detail: {x: posX, y: posY} }));
-                // console.log("[%O] <%O> Event: %O, %O", event.type, event.target, event, [left, top]);
+                if(DEBUG)
+                    console.log("[%O] <%O> Event: %O, %O", event.type, event.target, event, [left, top]);
             }
             function onPointerUp(event) {
                 if(event.which !== WHICH_LEFT)
@@ -147,11 +157,13 @@
                 isDraggingSomething = false;
                 dragTarget = undefined;
                 this.dispatchEvent(new CustomEvent(EVENT_OnDraggableDrop, {bubbles: true, detail: {x: posX, y: posY} }));
-                // console.log("[%O] <%O> Event: %O", event.type, event.target, event);
+                if(DEBUG)
+                    console.log("[%O] <%O> Event: %O", event.type, event.target, event);
             }
             function onPointerCancel(event) {
                 const draggable = toDraggable(event.target);
-                // console.log("[%O] <%O> Event: %O", event.type, event.target, event);
+                if(DEBUG)
+                    console.log("[%O] <%O> Event: %O", event.type, event.target, event);
             }
             function onPointerMove(event) {
                 if(!isDraggingSomething || dragTarget === undefined){
@@ -160,7 +172,8 @@
                 const draggable = dragTarget;
                 draggable.setPosition(event.clientX, event.clientY);
                 this.dispatchEvent(new CustomEvent(EVENT_OnDraggableMove, {bubbles: true, detail: {x: posX, y: posY} }));
-                // console.log("[%O] <%O> Event: %O", event.type, event.target, event);
+                if(DEBUG)
+                    console.log("[%O] <%O> Event: %O", event.type, event.target, event);
             }
 
             function onPointerLeave(event) {
@@ -168,7 +181,8 @@
                     return;
                 }
                 const draggable = dragTarget;
-                // console.log("[%O] <%O> Event: %O", event.type, event.target, event);
+                if(DEBUG)
+                    console.log("[%O] <%O> Event: %O", event.type, event.target, event);
             }
 
             let draggableElems = document.querySelectorAll(`[${ATTR_DraggableArea}]>[${ATTR_Draggable}]`);
@@ -203,20 +217,45 @@
     })();
 
     let snappable = (function() {
+
+        function getRect(elem) {
+            if(!(elem instanceof HTMLElement))
+                return null;
+            const computedStyle = window.getComputedStyle(elem);
+            let boundingRect = elem.getBoundingClientRect();
+            let rect = {
+                x: Number.parseFloat(computedStyle.left),
+                y: Number.parseFloat(computedStyle.top),
+                left: Number.parseFloat(computedStyle.left),
+                top: Number.parseFloat(computedStyle.top),
+                right: Number.parseFloat(computedStyle.left) + Number.parseFloat(computedStyle.width),
+                bottom: Number.parseFloat(computedStyle.top) + Number.parseFloat(computedStyle.height)
+            }
+            Object.keys(rect).forEach(key => rect[key] = isNaN(rect[key]) ? boundingRect[key] : rect[key]);
+            return rect;
+        }
     
         function overlaps(elem, area) {
-            const elemRect = elem.getBoundingClientRect();
-            const areaRect = area.getBoundingClientRect();
+            const elemRect = getRect(elem);
+            const areaRect = getRect(area);
     
-            console.log("elem: %O\narea: %O", elemRect, areaRect);
+            logTable({elem: elemRect, area: areaRect});
     
-            gte = (a, b, text = null) => { console.log("%O%O >= %O", text == null ? "" : text + " ", a, b); return a >= b; };
-            lte = (a, b, text = null) => { console.log("%O%O <= %O", text == null ? "" : text + " ", a, b); return a <= b; };
+            gte = (a, b, text = null) => { 
+                if(DEBUG)
+                    console.log("%O%O >= %O", text == null ? "" : text + " ", a, b); 
+                return a >= b; 
+            };
+            lte = (a, b, text = null) => { 
+                if(DEBUG)
+                    console.log("%O%O <= %O", text == null ? "" : text + " ", a, b); 
+                return a <= b; 
+            };
     
             return gte(elemRect.top, areaRect.top, "[top]") &&
-                   lte(elemRect.right, areaRect.right, "[left]") &&
-                   lte(elemRect.bottom, areaRect.bottom, "[bottom]") &&
-                   gte(elemRect.left, areaRect.left, "[left]");
+                   gte(elemRect.left, areaRect.left, "[left]") &&
+                   lte(elemRect.right, areaRect.right, "[bottom]") &&
+                   lte(elemRect.bottom, areaRect.bottom, "[left]");
         }
     
         function onDraggableDrop(event) {
@@ -231,7 +270,6 @@
                 snapholder = snapholders[i];
                 break;
             }
-            console.log("elem: %O, snapholder: %O", elem, snapholder);
             let foundSnapholder = snapholder !== undefined;
             elem.setAttribute(ATTR_IsSnapped, foundSnapholder);
             if(!foundSnapholder){
@@ -242,14 +280,14 @@
     
             const children = snapholder.childNodes;
             let target = undefined;
-            const elemRect = elem.getBoundingClientRect();
+            const elemRect = getRect(elem);
             for(let i=0; i<children.length; i++) {
                 const child = children[i];
                 if(child.tagName === ELEM_DraggableSpacer)
                     continue;
-                const childRect = child.getBoundingClientRect();
-                console.log("elemRect: %O, childRect: %O", elemRect, childRect);
-                if(elemRect.left >= childRect.left)
+                const childRect = getRect(child);
+                logTable({elem_text: elem.innerText, elem: elemRect, child_text: child.innerText, child: childRect});
+                if(elemRect.left > childRect.left)
                     continue;
                 target = child;
                 break;
